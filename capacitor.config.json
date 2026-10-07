@@ -1,0 +1,9 @@
+{
+  "appId": "com.engineering.camera",
+  "appName": "工程萬用相機",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  }
+}

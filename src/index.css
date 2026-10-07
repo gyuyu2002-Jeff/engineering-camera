@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Root layout respecting mobile safe areas & prevent viewport jumping */
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: #0b1112;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Safe area padding utilities for notch and Android navigation bars */
+:root {
+  --android-bottom-inset: 0px;
+  --android-top-inset: 0px;
+  --sat: max(env(safe-area-inset-top, 0px), var(--android-top-inset, 0px));
+  --sab: max(env(safe-area-inset-bottom, 0px), var(--android-bottom-inset, 0px));
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+}
+
+.safe-top {
+  padding-top: max(0.5rem, var(--sat));
+}
+
+.safe-bottom {
+  padding-bottom: max(1.25rem, calc(var(--sab) + 0.5rem));
+}
+
+.safe-bottom-nav {
+  padding-bottom: max(1.25rem, calc(var(--sab) + 0.75rem));
+}
+
+/* Hide scrollbar for clean mobile horizontal tabs */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

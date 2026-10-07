@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="120" fill="#0b1112" />
+  <rect x="24" y="24" width="464" height="464" rx="96" fill="none" stroke="#b7e854" stroke-width="16" />
+  <!-- Camera Body -->
+  <path d="M140 180 L180 130 L332 130 L372 180 L420 180 C437 180 450 193 450 210 L450 390 C450 407 437 420 420 420 L92 420 C75 420 62 407 62 390 L62 210 C62 193 75 180 92 180 Z" fill="#141c1b" stroke="#b7e854" stroke-width="14" />
+  <!-- Lens -->
+  <circle cx="256" cy="300" r="85" fill="#0b1112" stroke="#b7e854" stroke-width="16" />
+  <circle cx="256" cy="300" r="50" fill="#b7e854" opacity="0.9" />
+  <circle cx="230" cy="275" r="16" fill="#ffffff" opacity="0.8" />
+  <!-- Hard hat or engineering watermark badge icon -->
+  <rect x="180" y="340" width="152" height="24" rx="6" fill="#b7e854" />
+</svg>
