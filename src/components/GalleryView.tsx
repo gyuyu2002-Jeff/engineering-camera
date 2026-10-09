@@ -205,7 +205,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({
               title="匯入手機相簿已拍照片"
             >
               <FolderInput className="w-3.5 h-3.5" />
-              <span>{isImporting ? '匯入中...' : '匯入相片'}</span>
+              <span>{isImporting ? '匯入中...' : '匯入其他相片'}</span>
             </button>
 
             <button
