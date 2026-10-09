@@ -97,6 +97,15 @@ export async function savePhoto(photo: PhotoRecord): Promise<void> {
   await db.put('photos', photo);
 }
 
+export async function savePhotos(photos: PhotoRecord[]): Promise<void> {
+  const db = await getDb();
+  const tx = db.transaction('photos', 'readwrite');
+  for (const photo of photos) {
+    await tx.store.put(photo);
+  }
+  await tx.done;
+}
+
 export async function deletePhoto(id: string): Promise<void> {
   const db = await getDb();
   await db.delete('photos', id);
@@ -110,3 +119,4 @@ export async function deletePhotos(ids: string[]): Promise<void> {
   }
   await tx.done;
 }
+

@@ -23,6 +23,7 @@ interface CameraViewProps {
   activeProject: Project;
   watermarkData: WatermarkData;
   setWatermarkData: React.Dispatch<React.SetStateAction<WatermarkData>>;
+  photos?: PhotoRecord[];
   onOpenSettings: () => void;
   onOpenGallery: () => void;
   onPhotoTaken: (photo: PhotoRecord) => void;
@@ -34,6 +35,7 @@ export const CameraView: React.FC<CameraViewProps> = ({
   activeProject,
   watermarkData,
   setWatermarkData,
+  photos = [],
   onOpenSettings,
   onOpenGallery,
   onPhotoTaken,
@@ -52,6 +54,18 @@ export const CameraView: React.FC<CameraViewProps> = ({
   const [isLandscape, setIsLandscape] = useState(
     typeof window !== 'undefined' ? window.innerWidth > window.innerHeight : false
   );
+
+  // 當前工項已拍攝的張數計算
+  const currentPartName = (watermarkData.partName || '').trim();
+  const currentPartCount = currentPartName
+    ? photos.filter(
+        (p) =>
+          p.projectId === activeProject.id &&
+          (p.watermarkData.partName || '').trim() === currentPartName
+      ).length
+    : 0;
+
+  const targetCount = watermarkData.targetCount || 3;
 
   // Update watermark timestamp continuously
   useEffect(() => {
@@ -451,9 +465,9 @@ export const CameraView: React.FC<CameraViewProps> = ({
 
         {/* Floating Quick Part/Stage Pill in Landscape Mode */}
         {isLandscape && (
-          <div className="absolute bottom-3 left-4 z-30 flex items-center gap-2 max-w-[65%]">
+          <div className="absolute bottom-3 left-4 z-30 flex items-center gap-2 max-w-[70%]">
             <div className="bg-black/75 backdrop-blur-md border border-white/20 rounded-xl p-1.5 flex items-center gap-2 shadow-xl">
-              <div className="flex items-center gap-1 overflow-x-auto no-scrollbar max-w-[200px]">
+              <div className="flex items-center gap-1 overflow-x-auto no-scrollbar max-w-[180px]">
                 {QUICK_STAGES.map((stg) => (
                   <button
                     key={stg}
@@ -474,8 +488,29 @@ export const CameraView: React.FC<CameraViewProps> = ({
                 value={watermarkData.partName}
                 onChange={(e) => setWatermarkData((prev) => ({ ...prev, partName: e.target.value }))}
                 placeholder="工項部位..."
-                className="w-36 bg-white/10 border border-white/15 rounded-lg px-2 py-1 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-[#b7e854]"
+                className="w-32 bg-white/10 border border-white/15 rounded-lg px-2 py-1 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-[#b7e854]"
               />
+
+              {/* Landscape Count indicator and Target selector */}
+              <div className="flex items-center gap-1 bg-white/10 rounded-lg px-2 py-1 text-xs">
+                <span className={`font-bold ${currentPartCount >= targetCount ? 'text-emerald-400' : 'text-[#b7e854]'}`}>
+                  {currentPartCount}/{targetCount}張
+                </span>
+                <select
+                  value={targetCount}
+                  onChange={(e) =>
+                    setWatermarkData((prev) => ({ ...prev, targetCount: Number(e.target.value) }))
+                  }
+                  className="bg-transparent text-gray-300 text-[11px] font-bold focus:outline-none cursor-pointer"
+                  title="設定此工項應拍張數"
+                >
+                  {[1, 2, 3, 4, 5, 6, 8, 10].map((num) => (
+                    <option key={num} value={num} className="bg-[#141c1b] text-white">
+                      目標{num}張
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
         )}
@@ -520,7 +555,7 @@ export const CameraView: React.FC<CameraViewProps> = ({
         </div>
       ) : (
         /* Portrait Bottom Control Deck with Safe Area */
-        <div className="relative z-30 bg-gradient-to-t from-black via-black/95 to-black/70 pt-2 pb-[max(0.75rem,calc(env(safe-area-inset-bottom,0px)+0.5rem))] px-3 sm:px-4 flex flex-col gap-2.5 shrink-0">
+        <div className="relative z-30 bg-gradient-to-t from-black via-black/95 to-black/70 pt-2 pb-[max(0.75rem,calc(env(safe-area-inset-bottom,0px)+0.5rem))] px-3 sm:px-4 flex flex-col gap-2 shrink-0">
           {/* Quick Stage Selector Bar */}
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
             {QUICK_STAGES.map((stg) => (
@@ -548,7 +583,7 @@ export const CameraView: React.FC<CameraViewProps> = ({
             )}
           </div>
 
-          {/* Quick Part Name Input Inline */}
+          {/* Quick Part Name Input Inline & Target Photo Count Pill */}
           <div className="flex items-center gap-2">
             <input
               type="text"
@@ -557,6 +592,31 @@ export const CameraView: React.FC<CameraViewProps> = ({
               placeholder="點擊輸入本次工項部位 (例如: 1F天花板配管)"
               className="flex-1 bg-white/10 border border-white/15 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-[#b7e854]"
             />
+
+            {/* Target Count Selector & Progress Badge */}
+            <div className="flex items-center gap-1.5 bg-[#192421] border border-[#27302e] rounded-xl px-2.5 py-1.5 shrink-0">
+              <span
+                className={`text-[11px] font-extrabold ${
+                  currentPartCount >= targetCount ? 'text-emerald-400' : 'text-[#b7e854]'
+                }`}
+              >
+                {currentPartCount >= targetCount ? '✓ ' : ''}{currentPartCount}/{targetCount}
+              </span>
+              <select
+                value={targetCount}
+                onChange={(e) =>
+                  setWatermarkData((prev) => ({ ...prev, targetCount: Number(e.target.value) }))
+                }
+                className="bg-transparent text-gray-300 text-xs font-bold focus:outline-none cursor-pointer"
+                title="自訂此工項應拍張數"
+              >
+                {[1, 2, 3, 4, 5, 6, 8, 10].map((num) => (
+                  <option key={num} value={num} className="bg-[#141c1b] text-white">
+                    {num}張
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* Shutter Controls Bar */}

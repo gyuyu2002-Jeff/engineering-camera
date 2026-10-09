@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { PhotoRecord, Project, ConstructionStage } from '../types';
+import React, { useState, useRef } from 'react';
+import { PhotoRecord, Project, ConstructionStage, WatermarkData } from '../types';
 import {
   FileText,
   Trash2,
@@ -13,13 +13,19 @@ import {
   Building,
   Tag,
   Edit,
+  Upload,
+  Layers,
+  FolderInput,
+  CheckCircle,
 } from 'lucide-react';
-import { deletePhotos, savePhoto } from '../db/indexedDb';
+import { deletePhotos, savePhoto, savePhotos } from '../db/indexedDb';
 import { EditPhotoModal } from './EditPhotoModal';
+import { BatchEditModal } from './BatchEditModal';
 
 interface GalleryViewProps {
   photos: PhotoRecord[];
   activeProject: Project;
+  defaultWatermarkData: WatermarkData;
   onRefreshPhotos: () => void;
   onOpenWordExport: (selectedPhotos: PhotoRecord[]) => void;
 }
@@ -36,6 +42,7 @@ const STAGES: (ConstructionStage | '全部')[] = [
 export const GalleryView: React.FC<GalleryViewProps> = ({
   photos,
   activeProject,
+  defaultWatermarkData,
   onRefreshPhotos,
   onOpenWordExport,
 }) => {
@@ -43,6 +50,9 @@ export const GalleryView: React.FC<GalleryViewProps> = ({
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [previewPhoto, setPreviewPhoto] = useState<PhotoRecord | null>(null);
   const [editingPhoto, setEditingPhoto] = useState<PhotoRecord | null>(null);
+  const [isBatchEditOpen, setIsBatchEditOpen] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Filter photos by active project and stage
   const projectPhotos = photos.filter((p) => p.projectId === activeProject.id);
@@ -83,12 +93,98 @@ export const GalleryView: React.FC<GalleryViewProps> = ({
     document.body.removeChild(a);
   };
 
+  // 批次匯入現有手機相簿相片 (多選)
+  const handleBatchImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsImporting(true);
+    const newRecords: PhotoRecord[] = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      try {
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+
+        // 讀取相片真實寬高
+        const img = new Image();
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = reject;
+          img.src = dataUrl;
+        });
+
+        // 讀取檔案時間或當前時間
+        const fileDate = file.lastModified ? new Date(file.lastModified) : new Date();
+        const timeStr = `${fileDate.getFullYear()}-${String(fileDate.getMonth() + 1).padStart(
+          2,
+          '0'
+        )}-${String(fileDate.getDate()).padStart(2, '0')} ${String(fileDate.getHours()).padStart(
+          2,
+          '0'
+        )}:${String(fileDate.getMinutes()).padStart(2, '0')}:${String(
+          fileDate.getSeconds()
+        ).padStart(2, '0')}`;
+
+        const record: PhotoRecord = {
+          id: 'imported_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+          projectId: activeProject.id,
+          timestamp: file.lastModified || Date.now(),
+          watermarkedDataUrl: dataUrl, // 先以原圖顯示，後續可逐張或批次補壓銘牌
+          rawDataUrl: dataUrl,
+          width: img.naturalWidth || img.width,
+          height: img.naturalHeight || img.height,
+          isImported: true,
+          hasWatermark: false,
+          watermarkData: {
+            ...defaultWatermarkData,
+            projectId: activeProject.id,
+            projectName: activeProject.name,
+            contractor: activeProject.contractor,
+            locationText: activeProject.defaultLocation || defaultWatermarkData.locationText,
+            timestamp: timeStr,
+            partName: file.name.replace(/\.[^/.]+$/, '').slice(0, 30), // 預設以檔案名為初始工項
+            stage: '施工中',
+          },
+        };
+
+        newRecords.push(record);
+      } catch (err) {
+        console.warn('Importing file failed:', file.name, err);
+      }
+    }
+
+    if (newRecords.length > 0) {
+      await savePhotos(newRecords);
+      onRefreshPhotos();
+      alert(`成功匯入 ${newRecords.length} 張手機照片！\n您可在相簿中勾選進行「批次修改銘牌」或點擊照片「逐張編輯」。`);
+    }
+
+    setIsImporting(false);
+    e.target.value = '';
+  };
+
   const selectedPhotoRecords = projectPhotos.filter((p) => selectedIds.includes(p.id));
 
   return (
     <div className="flex-1 flex flex-col bg-[#0b1112] text-[#f5f6ef] overflow-hidden select-none">
+      {/* 隱藏的多選檔案輸入框 */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept="image/*"
+        onChange={handleBatchImport}
+        className="hidden"
+      />
+
       {/* Top Bar */}
-      <div className="p-4 bg-[#141c1b] border-b border-[#27302e] flex flex-col gap-3">
+      <div className="p-3.5 sm:p-4 bg-[#141c1b] border-b border-[#27302e] flex flex-col gap-2.5">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-base font-bold flex items-center gap-2">
@@ -101,6 +197,17 @@ export const GalleryView: React.FC<GalleryViewProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            {/* 批次匯入手機相片按鈕 */}
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isImporting}
+              className="text-xs px-2.5 py-1.5 rounded-lg bg-[#b7e854] text-[#0b1112] hover:bg-[#a6d542] font-black flex items-center gap-1.5 shadow-md active:scale-95 transition-all"
+              title="匯入手機相簿已拍照片"
+            >
+              <FolderInput className="w-3.5 h-3.5" />
+              <span>{isImporting ? '匯入中...' : '匯入相片'}</span>
+            </button>
+
             <button
               onClick={handleSelectAll}
               className="text-xs px-2.5 py-1.5 rounded-lg bg-[#192421] hover:bg-[#27302e] text-gray-300 flex items-center gap-1.5 border border-[#27302e]"
@@ -169,11 +276,16 @@ export const GalleryView: React.FC<GalleryViewProps> = ({
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
 
-                    {/* Stage Badge on Image */}
-                    <div className="absolute top-2 left-2">
+                    {/* Stage & Import Badge on Image */}
+                    <div className="absolute top-2 left-2 flex items-center gap-1">
                       <span className="text-[10px] font-bold px-1.5 py-0.5 rounded shadow-md bg-black/75 text-white backdrop-blur-xs">
                         {photo.watermarkData.stage}
                       </span>
+                      {photo.isImported && !photo.hasWatermark && (
+                        <span className="text-[9px] font-bold px-1 py-0.5 rounded shadow-md bg-blue-600/90 text-white">
+                          相簿匯入
+                        </span>
+                      )}
                     </div>
 
                     <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -217,15 +329,25 @@ export const GalleryView: React.FC<GalleryViewProps> = ({
 
       {/* Floating Action Bar (Protected from bottom navigation bar & system bar) */}
       {selectedIds.length > 0 && (
-        <div className="fixed bottom-[calc(4.8rem+max(0.6rem,env(safe-area-inset-bottom,0px)))] inset-x-4 max-w-lg mx-auto z-40 bg-[#141c1b] border border-[#b7e854] rounded-2xl p-3 shadow-2xl flex items-center justify-between animate-in slide-in-from-bottom duration-200">
-          <div className="text-xs font-semibold text-white pl-2">
-            已勾選 <span className="text-[#b7e854] font-bold text-sm">{selectedIds.length}</span> 張相片
+        <div className="fixed bottom-[calc(4.8rem+max(0.6rem,env(safe-area-inset-bottom,0px)))] inset-x-3 sm:inset-x-4 max-w-lg mx-auto z-40 bg-[#141c1b] border border-[#b7e854] rounded-2xl p-2.5 sm:p-3 shadow-2xl flex items-center justify-between animate-in slide-in-from-bottom duration-200">
+          <div className="text-xs font-semibold text-white pl-1 sm:pl-2">
+            已選 <span className="text-[#b7e854] font-bold text-sm">{selectedIds.length}</span> 張
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* 批次修改銘牌按鈕 */}
+            <button
+              onClick={() => setIsBatchEditOpen(true)}
+              className="px-2.5 sm:px-3 py-2 rounded-xl bg-[#27302e] hover:bg-[#34403d] text-[#b7e854] font-bold text-xs flex items-center gap-1 active:scale-95 transition-all"
+              title="批次設定工項與階段"
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>批次修改</span>
+            </button>
+
             <button
               onClick={handleDeleteSelected}
-              className="p-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 transition-colors active:scale-95"
+              className="p-2 sm:p-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 transition-colors active:scale-95"
               title="刪除選取相片"
             >
               <Trash2 className="w-4 h-4" />
@@ -233,10 +355,10 @@ export const GalleryView: React.FC<GalleryViewProps> = ({
 
             <button
               onClick={() => onOpenWordExport(selectedPhotoRecords)}
-              className="px-4 py-2.5 rounded-xl bg-[#b7e854] text-[#0b1112] font-bold text-xs flex items-center gap-1.5 shadow-lg hover:bg-[#a6d542] active:scale-95 transition-all"
+              className="px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-[#b7e854] text-[#0b1112] font-black text-xs flex items-center gap-1 shadow-lg hover:bg-[#a6d542] active:scale-95 transition-all"
             >
-              <FileText className="w-4 h-4" />
-              輸出 Word 報告
+              <FileText className="w-3.5 h-3.5" />
+              <span>Word 報告</span>
             </button>
           </div>
         </div>
@@ -339,6 +461,20 @@ export const GalleryView: React.FC<GalleryViewProps> = ({
             if (previewPhoto && previewPhoto.id === updated.id) {
               setPreviewPhoto(updated);
             }
+          }}
+        />
+      )}
+
+      {/* Batch Edit Modal */}
+      {isBatchEditOpen && (
+        <BatchEditModal
+          isOpen={isBatchEditOpen}
+          selectedPhotos={selectedPhotoRecords}
+          onClose={() => setIsBatchEditOpen(false)}
+          onSave={async (updatedList) => {
+            await savePhotos(updatedList);
+            onRefreshPhotos();
+            setSelectedIds([]);
           }}
         />
       )}

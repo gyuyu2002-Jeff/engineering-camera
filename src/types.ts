@@ -33,6 +33,7 @@ export interface WatermarkData {
   note: string; // 施工備註說明
   templateStyle: WatermarkTemplate;
   boardSize?: 'compact' | 'standard'; // 銘牌尺寸大小：精簡/標準
+  targetCount?: number; // 該工項目標相片張數 (純指定數字，例如：3)
 }
 
 export interface PhotoRecord {
@@ -44,4 +45,6 @@ export interface PhotoRecord {
   watermarkData: WatermarkData;
   width: number;
   height: number;
+  isImported?: boolean; // 是否為自手機相簿匯入之相片
+  hasWatermark?: boolean; // 是否已壓製銘牌浮水印 (匯入相片初始可為 false，後續可再壓印)
 }

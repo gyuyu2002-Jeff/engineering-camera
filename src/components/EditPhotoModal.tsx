@@ -32,6 +32,8 @@ export const EditPhotoModal: React.FC<EditPhotoModalProps> = ({
     contractor: photo.watermarkData.contractor || '',
     locationText: photo.watermarkData.locationText || '',
     note: photo.watermarkData.note || '',
+    timestamp: photo.watermarkData.timestamp || '',
+    targetCount: photo.watermarkData.targetCount || 3,
   });
 
   const [isSaving, setIsSaving] = useState(false);
@@ -49,6 +51,8 @@ export const EditPhotoModal: React.FC<EditPhotoModalProps> = ({
         contractor: formData.contractor.trim(),
         locationText: formData.locationText.trim(),
         note: formData.note.trim(),
+        timestamp: formData.timestamp.trim() || photo.watermarkData.timestamp,
+        targetCount: Number(formData.targetCount) > 0 ? Number(formData.targetCount) : undefined,
       };
 
       // 載入底圖重新壓製浮水印
@@ -154,6 +158,18 @@ export const EditPhotoModal: React.FC<EditPhotoModalProps> = ({
             />
           </div>
 
+          {/* 拍攝時間 */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-300 mb-1">拍攝時間</label>
+            <input
+              type="text"
+              value={formData.timestamp}
+              onChange={(e) => setFormData((prev) => ({ ...prev, timestamp: e.target.value }))}
+              placeholder="例：2026-10-09 15:30:00"
+              className="w-full bg-[#0b1112] border border-[#27302e] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#b7e854]"
+            />
+          </div>
+
           {/* 施工地點 */}
           <div>
             <label className="block text-xs font-semibold text-gray-300 mb-1">拍攝地點</label>
@@ -164,6 +180,24 @@ export const EditPhotoModal: React.FC<EditPhotoModalProps> = ({
               placeholder="例：現場、松仁路 100 號"
               className="w-full bg-[#0b1112] border border-[#27302e] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#b7e854]"
             />
+          </div>
+
+          {/* 工項目標張數 */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-300 mb-1">
+              該工項預計包含相片張數
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={1}
+                max={50}
+                value={formData.targetCount}
+                onChange={(e) => setFormData((prev) => ({ ...prev, targetCount: Number(e.target.value) || 1 }))}
+                className="w-24 bg-[#0b1112] border border-[#27302e] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#b7e854]"
+              />
+              <span className="text-xs text-gray-400">張（用於拍攝進度防漏拍與 Word 報告分組）</span>
+            </div>
           </div>
 
           {/* 備註說明（Word 匯出查驗說明） */}
