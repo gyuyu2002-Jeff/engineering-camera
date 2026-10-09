@@ -55,18 +55,6 @@ export const CameraView: React.FC<CameraViewProps> = ({
     typeof window !== 'undefined' ? window.innerWidth > window.innerHeight : false
   );
 
-  // 當前工項已拍攝的張數計算
-  const currentPartName = (watermarkData.partName || '').trim();
-  const currentPartCount = currentPartName
-    ? photos.filter(
-        (p) =>
-          p.projectId === activeProject.id &&
-          (p.watermarkData.partName || '').trim() === currentPartName
-      ).length
-    : 0;
-
-  const targetCount = watermarkData.targetCount || 3;
-
   // Update watermark timestamp continuously
   useEffect(() => {
     const updateTime = () => {
@@ -467,7 +455,7 @@ export const CameraView: React.FC<CameraViewProps> = ({
         {isLandscape && (
           <div className="absolute bottom-3 left-4 z-30 flex items-center gap-2 max-w-[70%]">
             <div className="bg-black/75 backdrop-blur-md border border-white/20 rounded-xl p-1.5 flex items-center gap-2 shadow-xl">
-              <div className="flex items-center gap-1 overflow-x-auto no-scrollbar max-w-[180px]">
+              <div className="flex items-center gap-1 overflow-x-auto no-scrollbar max-w-[200px]">
                 {QUICK_STAGES.map((stg) => (
                   <button
                     key={stg}
@@ -487,30 +475,9 @@ export const CameraView: React.FC<CameraViewProps> = ({
                 type="text"
                 value={watermarkData.partName}
                 onChange={(e) => setWatermarkData((prev) => ({ ...prev, partName: e.target.value }))}
-                placeholder="工項部位..."
-                className="w-32 bg-white/10 border border-white/15 rounded-lg px-2 py-1 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-[#b7e854]"
+                placeholder="點擊輸入工項部位..."
+                className="w-48 bg-white/10 border border-white/15 rounded-lg px-2.5 py-1 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-[#b7e854]"
               />
-
-              {/* Landscape Count indicator and Target selector */}
-              <div className="flex items-center gap-1 bg-white/10 rounded-lg px-2 py-1 text-xs">
-                <span className={`font-bold ${currentPartCount >= targetCount ? 'text-emerald-400' : 'text-[#b7e854]'}`}>
-                  {currentPartCount}/{targetCount}張
-                </span>
-                <select
-                  value={targetCount}
-                  onChange={(e) =>
-                    setWatermarkData((prev) => ({ ...prev, targetCount: Number(e.target.value) }))
-                  }
-                  className="bg-transparent text-gray-300 text-[11px] font-bold focus:outline-none cursor-pointer"
-                  title="設定此工項應拍張數"
-                >
-                  {[1, 2, 3, 4, 5, 6, 8, 10].map((num) => (
-                    <option key={num} value={num} className="bg-[#141c1b] text-white">
-                      目標{num}張
-                    </option>
-                  ))}
-                </select>
-              </div>
             </div>
           </div>
         )}
@@ -583,40 +550,15 @@ export const CameraView: React.FC<CameraViewProps> = ({
             )}
           </div>
 
-          {/* Quick Part Name Input Inline & Target Photo Count Pill */}
+          {/* Quick Part Name Input Inline (Full Width) */}
           <div className="flex items-center gap-2">
             <input
               type="text"
               value={watermarkData.partName}
               onChange={(e) => setWatermarkData((prev) => ({ ...prev, partName: e.target.value }))}
               placeholder="點擊輸入本次工項部位 (例如: 1F天花板配管)"
-              className="flex-1 bg-white/10 border border-white/15 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-[#b7e854]"
+              className="flex-1 bg-white/10 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-[#b7e854]"
             />
-
-            {/* Target Count Selector & Progress Badge */}
-            <div className="flex items-center gap-1.5 bg-[#192421] border border-[#27302e] rounded-xl px-2.5 py-1.5 shrink-0">
-              <span
-                className={`text-[11px] font-extrabold ${
-                  currentPartCount >= targetCount ? 'text-emerald-400' : 'text-[#b7e854]'
-                }`}
-              >
-                {currentPartCount >= targetCount ? '✓ ' : ''}{currentPartCount}/{targetCount}
-              </span>
-              <select
-                value={targetCount}
-                onChange={(e) =>
-                  setWatermarkData((prev) => ({ ...prev, targetCount: Number(e.target.value) }))
-                }
-                className="bg-transparent text-gray-300 text-xs font-bold focus:outline-none cursor-pointer"
-                title="自訂此工項應拍張數"
-              >
-                {[1, 2, 3, 4, 5, 6, 8, 10].map((num) => (
-                  <option key={num} value={num} className="bg-[#141c1b] text-white">
-                    {num}張
-                  </option>
-                ))}
-              </select>
-            </div>
           </div>
 
           {/* Shutter Controls Bar */}

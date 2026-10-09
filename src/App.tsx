@@ -186,7 +186,7 @@ export const App: React.FC = () => {
             <h1 className="text-sm font-extrabold tracking-wide text-white flex items-center gap-1.5">
               <span>工程驗收相機</span>
               <span className="text-[10px] font-extrabold px-1.5 py-0.5 bg-[#b7e854] text-[#0b1112] rounded shadow-sm">
-                v1.9.5
+                v1.9.6
               </span>
             </h1>
           </div>
