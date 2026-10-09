@@ -25,7 +25,7 @@ import { PhotoRecord, Project } from '../types';
 export interface WordExportOptions {
   reportTitle: string;
   project: Project;
-  layout: '2_per_page' | '4_per_page';
+  layout: 'grouped_by_item_stage' | '2_per_page' | '4_per_page';
   includeNote: boolean;
   signerName?: string;
 }
@@ -116,7 +116,157 @@ export async function exportWordReport(
   children.push(new Paragraph({ spacing: { after: 100 } }));
 
   // 3. Photos and Details Table
-  if (layout === '2_per_page') {
+  if (layout === 'grouped_by_item_stage') {
+    // 【同工項階段分組（一欄多圖）】
+    // 同一個工項在同一個施工階段（例如：1F天花板配管【施工前】）的 N 張照片放在同一個區塊欄目內
+    // 依「工項名稱」分群，群內按「施工前 ➔ 施工中 ➔ 施工後 ➔ 隱蔽查驗 ➔ 自主檢查」標準階段順序排序
+    const stageOrder: Record<string, number> = {
+      施工前: 1,
+      施工中: 2,
+      施工後: 3,
+      隱蔽查驗: 4,
+      自主檢查: 5,
+      材料進場: 6,
+      缺失改善: 7,
+    };
+
+    // 建立群組：Key 為 `${partName}__SPLIT__${stage}`
+    const groupsMap = new Map<string, { partName: string; stage: string; items: PhotoRecord[] }>();
+
+    for (const p of photos) {
+      const part = (p.watermarkData.partName || '一般工程項目').trim();
+      const stg = (p.watermarkData.stage || '施工中').trim();
+      const key = `${part}__SPLIT__${stg}`;
+
+      if (!groupsMap.has(key)) {
+        groupsMap.set(key, { partName: part, stage: stg, items: [] });
+      }
+      groupsMap.get(key)!.items.push(p);
+    }
+
+    const groups = Array.from(groupsMap.values()).sort((a, b) => {
+      if (a.partName !== b.partName) {
+        return a.partName.localeCompare(b.partName, 'zh-TW');
+      }
+      const orderA = stageOrder[a.stage] || 99;
+      const orderB = stageOrder[b.stage] || 99;
+      return orderA - orderB;
+    });
+
+    for (let gIdx = 0; gIdx < groups.length; gIdx++) {
+      const group = groups[gIdx];
+      const count = group.items.length;
+
+      // 決定縮小照片尺寸與欄寬 (若是 3 張，每張約 145pt，等比縮小橫排在同一行)
+      const colWidthPercent = Math.floor(100 / Math.min(count, 3));
+      const targetW = count >= 3 ? 142 : count === 2 ? 215 : 440;
+      const targetH = count >= 3 ? 108 : count === 2 ? 155 : 220;
+
+      // 照片列儲存格
+      const photoCells: TableCell[] = group.items.map((p, pIdx) => {
+        const bytes = dataUrlToUint8Array(p.watermarkedDataUrl);
+        return new TableCell({
+          width: { size: colWidthPercent, type: WidthType.PERCENTAGE },
+          shading: { fill: 'FFFFFF' },
+          margins: { top: 30, bottom: 30, left: 30, right: 30 },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              keepNext: true,
+              children: [
+                new ImageRun({
+                  data: bytes,
+                  transformation: { width: targetW, height: targetH },
+                  type: 'jpg',
+                }),
+              ],
+            }),
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              spacing: { before: 20 },
+              children: [
+                new TextRun({
+                  text: `圖 ${pIdx + 1}`,
+                  size: 16,
+                  color: '64748B',
+                  font: 'Microsoft JhengHei',
+                }),
+              ],
+            }),
+          ],
+        });
+      });
+
+      // 第一張照片的時間與地點作為代表
+      const repPhoto = group.items[0];
+      const allNotes = group.items
+        .map((p) => p.watermarkData.note?.trim())
+        .filter(Boolean);
+      const combinedNote =
+        allNotes.length > 0
+          ? Array.from(new Set(allNotes)).join('；')
+          : '現場施作情形正常，符合工程圖說規範要求。';
+
+      const groupTable = new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: [
+          // Row 1: 工項標題列
+          new TableRow({
+            cantSplit: true,
+            children: [
+              createHeaderCell(`工項 ${gIdx + 1}`, 15),
+              createValueCell(group.partName, 35, 1, true),
+              createHeaderCell('查驗階段', 15),
+              createValueCell(`【${group.stage}】 (共 ${count} 張)`, 35, 1, true),
+            ],
+          }),
+          // Row 2: 縮小照片並排列 (跨所有欄位)
+          new TableRow({
+            cantSplit: true,
+            children: [
+              new TableCell({
+                width: { size: 100, type: WidthType.PERCENTAGE },
+                columnSpan: 4,
+                shading: { fill: 'FAFAFA' },
+                margins: { top: 40, bottom: 40, left: 40, right: 40 },
+                children: [
+                  new Table({
+                    width: { size: 100, type: WidthType.PERCENTAGE },
+                    rows: [
+                      new TableRow({
+                        children: photoCells,
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+            ],
+          }),
+          // Row 3: 查驗時間與地點
+          new TableRow({
+            cantSplit: true,
+            children: [
+              createHeaderCell('拍攝時間', 15),
+              createValueCell(repPhoto.watermarkData.timestamp, 35),
+              createHeaderCell('查驗地點', 15),
+              createValueCell(repPhoto.watermarkData.locationText || '現場', 35),
+            ],
+          }),
+          // Row 4: 查驗說明 (同工項同區塊共用)
+          new TableRow({
+            cantSplit: true,
+            children: [
+              createHeaderCell('查驗說明', 15),
+              createValueCell(combinedNote, 85, 3),
+            ],
+          }),
+        ],
+      });
+
+      children.push(groupTable);
+      children.push(new Paragraph({ spacing: { after: 120 } }));
+    }
+  } else if (layout === '2_per_page') {
     // 2 photos per page: Each photo and its details are in a unified table with cantSplit so they never split across pages
     // Note on Page 1: Title (~40pt) + Project Table (~80pt) leaves ~640pt printable height.
     // Each photo card must be <= 300pt in height (Image ~210pt + Table info ~75pt = ~285pt)

@@ -27,7 +27,7 @@ export const WordExportModal: React.FC<WordExportModalProps> = ({
   activeProject,
 }) => {
   const [reportTitle, setReportTitle] = useState('工程施工相片紀錄表');
-  const [layout, setLayout] = useState<'2_per_page' | '4_per_page'>('2_per_page');
+  const [layout, setLayout] = useState<'grouped_by_item_stage' | '2_per_page' | '4_per_page'>('grouped_by_item_stage');
   const [signerName, setSignerName] = useState('工務現場工程師');
   const [isExporting, setIsExporting] = useState(false);
   const [exportSuccessInfo, setExportSuccessInfo] = useState<{
@@ -193,36 +193,61 @@ export const WordExportModal: React.FC<WordExportModalProps> = ({
               {/* 版面樣式選擇 */}
               <div>
                 <label className="block text-xs font-semibold text-gray-300 mb-2">Word 排版規格</label>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-2.5">
+                  {/* 首選：同工項階段分組（一欄多圖） */}
                   <button
                     type="button"
-                    onClick={() => setLayout('2_per_page')}
+                    onClick={() => setLayout('grouped_by_item_stage')}
                     className={`p-3 rounded-xl border text-left transition-all ${
-                      layout === '2_per_page'
-                        ? 'border-[#b7e854] bg-[#b7e854]/10 ring-1 ring-[#b7e854]'
-                        : 'border-[#27302e] bg-[#0b1112] text-gray-400'
+                      layout === 'grouped_by_item_stage'
+                        ? 'border-[#b7e854] bg-[#b7e854]/15 ring-1 ring-[#b7e854]'
+                        : 'border-[#27302e] bg-[#0b1112] text-gray-400 hover:border-gray-500'
                     }`}
                   >
-                    <div className="font-bold text-sm text-[#b7e854] mb-1">A4 一頁 2 張 (推薦)</div>
-                    <div className="text-xs text-gray-400 leading-relaxed">
-                      大尺寸照片清晰，附詳細查驗表格，適合正式公文、業主與監造送審。
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-bold text-sm text-[#b7e854]">
+                        ⭐ 同工項階段分組（一欄多圖・推薦）
+                      </span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#b7e854] text-[#0b1112] font-black">
+                        業主審查標準
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-300 leading-relaxed">
+                      同一工項、同一階段（施工前/中/後）照片縮小並排在同一欄目內，共用查驗說明，結構清晰不紊亂。
                     </div>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => setLayout('4_per_page')}
-                    className={`p-3 rounded-xl border text-left transition-all ${
-                      layout === '4_per_page'
-                        ? 'border-[#b7e854] bg-[#b7e854]/10 ring-1 ring-[#b7e854]'
-                        : 'border-[#27302e] bg-[#0b1112] text-gray-400'
-                    }`}
-                  >
-                    <div className="font-bold text-sm text-[#b7e854] mb-1">A4 一頁 4 張</div>
-                    <div className="text-xs text-gray-400 leading-relaxed">
-                      精簡 2x2 排版，節省紙張，適合內部存檔或大量進度快速清冊。
-                    </div>
-                  </button>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setLayout('2_per_page')}
+                      className={`p-2.5 rounded-xl border text-left transition-all ${
+                        layout === '2_per_page'
+                          ? 'border-[#b7e854] bg-[#b7e854]/10 ring-1 ring-[#b7e854]'
+                          : 'border-[#27302e] bg-[#0b1112] text-gray-400 hover:border-gray-500'
+                      }`}
+                    >
+                      <div className="font-bold text-xs text-[#b7e854] mb-0.5">單張獨立・一頁2張</div>
+                      <div className="text-[11px] text-gray-400 leading-snug">
+                        大圖詳細版，每張照片獨立專屬查驗說明表格。
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setLayout('4_per_page')}
+                      className={`p-2.5 rounded-xl border text-left transition-all ${
+                        layout === '4_per_page'
+                          ? 'border-[#b7e854] bg-[#b7e854]/10 ring-1 ring-[#b7e854]'
+                          : 'border-[#27302e] bg-[#0b1112] text-gray-400 hover:border-gray-500'
+                      }`}
+                    >
+                      <div className="font-bold text-xs text-[#b7e854] mb-0.5">單張獨立・一頁4張</div>
+                      <div className="text-[11px] text-gray-400 leading-snug">
+                        2×2 網格清冊版，節省紙張與快速歸檔。
+                      </div>
+                    </button>
+                  </div>
                 </div>
               </div>
 
